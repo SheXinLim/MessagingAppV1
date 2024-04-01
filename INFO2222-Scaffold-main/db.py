@@ -38,13 +38,6 @@ def check_password(plain_password, stored_password):
     new_hashed_password = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt, 100000)
     return new_hashed_password == hashed_password
 
-# # inserts a user to the database
-# def insert_user(username: str, password: str):
-#     with Session(engine) as session:
-#         user = User(username=username, password=password)
-#         session.add(user)
-#         session.commit()
-
 # Modify the insert_user function to hash password before storing
 def insert_user(username: str, password: str):
     with Session(engine) as session:
