@@ -47,7 +47,8 @@ def login_user():
     if user is None:
         return "Error: User does not exist!"
     
-    if password != user.password:
+    # if password != user.password:
+    if not db.check_password(password, user.password):
         return "Error: Password does not match!"
 
     return url_for('home', username=request.json.get("username"))

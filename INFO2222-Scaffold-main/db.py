@@ -24,15 +24,19 @@ engine = create_engine("sqlite:///database/main.db", echo=False)
 # initializes the database
 Base.metadata.create_all(engine)
 
-
 def hash_password(plain_password):
-    # Hash the plain password and return the hash
-    return bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt())
+    salt = os.urandom(16)
+    hashed_password = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt, 100000)
+    salt_encoded = base64.b64encode(salt).decode('utf-8')
+    hashed_password_encoded = base64.b64encode(hashed_password).decode('utf-8')
+    return f"{salt_encoded}${hashed_password_encoded}"
 
-def check_password(plain_password, hashed_password):
-    # Check if the plain password matches the hashed password
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
-
+def check_password(plain_password, stored_password):
+    salt_encoded, hashed_password_encoded = stored_password.split('$')
+    salt = base64.b64decode(salt_encoded)
+    hashed_password = base64.b64decode(hashed_password_encoded)
+    new_hashed_password = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt, 100000)
+    return new_hashed_password == hashed_password
 
 # # inserts a user to the database
 # def insert_user(username: str, password: str):
@@ -44,8 +48,8 @@ def check_password(plain_password, hashed_password):
 # Modify the insert_user function to hash password before storing
 def insert_user(username: str, password: str):
     with Session(engine) as session:
-        #hashed_password = hash_password(password)
-        user = User(username=username, password=password)
+        hashed_password = hash_password(password)
+        user = User(username=username, password=hashed_password)
         session.add(user)
         session.commit()
 
