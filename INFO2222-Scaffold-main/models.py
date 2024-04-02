@@ -10,9 +10,11 @@ Prisma docs also looks so much better in comparison
 or use SQLite, if you're not into fancy ORMs (but be mindful of Injection attacks :) )
 '''
 
-from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String,Column, Integer, String, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Dict
+from sqlalchemy.dialects.postgresql import JSON
+
 
 # data models
 class Base(DeclarativeBase):
@@ -26,8 +28,13 @@ class User(Base):
     # I want a username column of type string,
     # and I want this column to be my primary key
     # then accessing john.username -> will give me some data of type string
-    # in other words we've mapped the username Python object property to an SQL column of type String 
-    username: Mapped[str] = mapped_column(String, primary_key=True)
+    # in other words we've mapped the username Python object property to an SQL column of type String
+        
+    # Adding user_id as the primary key
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Making username a unique identifier, but not the primary key
+    username: Mapped[str] = mapped_column(String, unique=True)
+    #username: Mapped[str] = mapped_column(String, primary_key=True)
     password: Mapped[str] = mapped_column(String)
     
 
@@ -69,3 +76,27 @@ class Room():
             return None
         return self.dict[user]
     
+#user_id and friend_id are foreign keys that reference the id column of the user table.
+#status is a string that can hold values like 'confirmed', 'pending', or 'rejected'.
+#relationship is used to define a linkage with the User model so that you can easily access user details from a Friendship instance.
+
+class FriendRequest(Base):
+    __tablename__ = 'friend_request'
+
+    sender_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.user_id'), primary_key=True)
+    receiver_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.user_id'), primary_key=True)
+    status: Mapped[str] = mapped_column(String)  # 'pending', 'accepted', 'rejected'
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+
+
+class Friendship(Base):
+    __tablename__ = 'friendship'
+
+    # Assuming you have an 'id' column in your 'User' model
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.user_id'))
+    friend_id: Mapped[int] = mapped_column(Integer, ForeignKey('user.user_id'))
+
+    user = relationship("User", foreign_keys=[user_id])
+    friend = relationship("User", foreign_keys=[friend_id])
