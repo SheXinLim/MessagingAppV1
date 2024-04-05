@@ -10,8 +10,8 @@ Prisma docs also looks so much better in comparison
 or use SQLite, if you're not into fancy ORMs (but be mindful of Injection attacks :) )
 '''
 
-from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String, Column, Integer, ForeignKey, Enum
+from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from typing import Dict
 
 # data models
@@ -29,7 +29,35 @@ class User(Base):
     # in other words we've mapped the username Python object property to an SQL column of type String 
     username: Mapped[str] = mapped_column(String, primary_key=True)
     password: Mapped[str] = mapped_column(String)
+
+class FriendRequest(Base):
+    __tablename__ = "friend_request"
+
+    # Unique identifier for each friend request
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     
+    # The sender of the friend request
+    sender_username: Mapped[str] = mapped_column(String, ForeignKey('user.username'))
+    
+    # The recipient of the friend request
+    receiver_username: Mapped[str] = mapped_column(String, ForeignKey('user.username'))
+    
+    # The status of the friend request (e.g., pending, accepted, declined)
+    status: Mapped[str] = mapped_column(String)
+
+    # Relationship with User model
+    sender = relationship("User", foreign_keys=[sender_username])
+    receiver = relationship("User", foreign_keys=[receiver_username])
+
+class Friendship(Base):
+    __tablename__ = "friendship"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey('user.username'))
+    friend_id: Mapped[str] = mapped_column(String, ForeignKey('user.username'))
+
+    user = relationship("User", foreign_keys=[user_id])
+    friend = relationship("User", foreign_keys=[friend_id])
 
 # stateful counter used to generate the room id
 class Counter():

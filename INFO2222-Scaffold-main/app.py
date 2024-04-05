@@ -4,7 +4,7 @@ this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
 
-from flask import Flask, render_template, request, abort, url_for
+from flask import Flask, flash, redirect, render_template, request, abort, session, url_for
 from flask_socketio import SocketIO
 import db
 import secrets
@@ -49,7 +49,7 @@ def login_user():
     
     if not db.check_password(password, user.password):
         return "Error: Password does not match!"
-
+    session['username'] = username  # Set username in session
     return url_for('home', username=request.json.get("username"))
 
 # handles a get request to the signup page
@@ -66,7 +66,7 @@ def signup_user():
     password = request.json.get("password")
 
     if not username or not password:
-        return "Error: Username and password are required.", 400
+        return "Error: Username and password are required."
     
     if db.get_user(username) is None:
         db.insert_user(username, password)
@@ -83,8 +83,57 @@ def page_not_found(_):
 def home():
     if request.args.get("username") is None:
         abort(404)
-    return render_template("home.jinja", username=request.args.get("username"))
+    username = request.args.get("username")
+    received_requests = db.get_received_friend_requests(username)
+    sent_requests = db.get_sent_friend_requests(username)
 
+    return render_template("home.jinja", username=request.args.get("username"),received_requests=received_requests, 
+                           sent_requests=sent_requests)
+
+# friend req
+@app.route("/send-friend-request", methods=["POST"])
+def send_friend_request_route():
+    if not request.is_json:
+        abort(400)
+
+    sender_username = session.get("username")  # Assume the sender is the logged-in user
+    receiver_username = request.json.get("receiver")
+
+    if not sender_username:
+        return "You must be logged in to send friend requests"
+
+    if db.send_friend_request(sender_username, receiver_username):
+        return "Friend request sent successfully!"
+    else:
+        return "Friend request could not be sent (user may not exist or request already sent)"
+
+@app.route("/friend-requests/<username>")
+def friend_requests(username):
+    requests = db.get_friend_requests(username)
+    return {"friendRequests": requests}
+
+@app.route("/accept-friend-request/<request_id>", methods=["POST"])
+def accept_friend_request_route(request_id):
+    username = session.get("username")  # Get username from session
+    if not username:
+        return "You must be logged in to accept friend requests", 403
+
+    if db.accept_friend_request(int(request_id),username):
+        return "Friend request accepted!"
+    else:
+        return "Could not accept friend request"
+
+@app.route("/decline-friend-request/<request_id>", methods=["POST"])
+def decline_friend_request_route(request_id):
+    username = session.get("username")  # Get username from session
+    if not username:
+        return "You must be logged in to decline friend requests", 403
+
+    success = db.decline_friend_request(int(request_id), username)
+    if success:
+        return "Friend request declined successfully"
+    else:
+        return "Failed to decline friend request"
 
 
 if __name__ == '__main__':

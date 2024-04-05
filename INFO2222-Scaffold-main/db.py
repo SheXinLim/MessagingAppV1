@@ -50,3 +50,92 @@ def insert_user(username: str, password: str):
 def get_user(username: str):
     with Session(engine) as session:
         return session.get(User, username)
+
+def send_friend_request(sender_username: str, receiver_username: str):
+    with Session(engine) as session:
+        # Check if both the sender and receiver exist in the database
+        sender = session.query(User).filter_by(username=sender_username).first()
+        receiver = session.query(User).filter_by(username=receiver_username).first()
+
+        if not sender or not receiver:
+            # sender or receiver doesn't exist
+            return False
+
+        # Prevent sending a friend request to oneself
+        if sender_username == receiver_username:
+            return False
+
+        # Check if a friend request already exists between these two users
+        existing_request = session.query(FriendRequest).filter(
+            ((FriendRequest.sender_username == sender_username) & 
+             (FriendRequest.receiver_username == receiver_username)) |
+            ((FriendRequest.sender_username == receiver_username) & 
+             (FriendRequest.receiver_username == sender_username))
+        ).first()
+
+        if existing_request:
+            # Return some indication that the friend request already exists
+            return False
+
+        # If both users exist and no friend request exists, create a new friend request
+        friend_request = FriendRequest(sender_username=sender_username, receiver_username=receiver_username, status='pending')
+        session.add(friend_request)
+        session.commit()
+        return True
+
+
+def get_friend_requests(username: str):
+    with Session(engine) as session:
+        # Fetching friend requests where the user is the receiver and the request is pending
+        friend_requests = session.query(FriendRequest).filter_by(receiver_username=username, status='pending').all()
+        return [fr.sender_username for fr in friend_requests]
+
+def accept_friend_request(request_id: int, username: str):
+    with Session(engine) as session:
+        friend_request = session.get(FriendRequest, request_id)
+        
+        if not friend_request or friend_request.receiver_username != username:
+            return False
+
+        if friend_request.status == 'pending':
+            friend_request.status = 'accepted'
+            # Create the friendship in both directions
+            user_id, friend_id = sorted([friend_request.sender_username, friend_request.receiver_username])
+
+            # Check if the friendship already exists to prevent duplication
+            existing_friendship = session.query(Friendship).filter_by(user_id=user_id, friend_id=friend_id).first()
+            if not existing_friendship:
+                session.add(Friendship(user_id=user_id, friend_id=friend_id))
+
+            session.commit()
+            return True
+        
+        return False
+
+def decline_friend_request(request_id: int, username: str):
+    with Session(engine) as session:
+        friend_request = session.get(FriendRequest, request_id)
+        
+        if not friend_request or friend_request.receiver_username != username:
+            return False
+
+        if friend_request.status == 'pending':
+            friend_request.status = 'declined'
+            session.commit()
+            return True
+        # Remove the friend request from the database
+        session.delete(friend_request)
+        session.commit()
+        return False
+
+def get_received_friend_requests(username: str):
+    with Session(engine) as session:
+        # Assuming FriendRequest model has 'receiver_username' and 'status' fields
+        return session.query(FriendRequest).filter_by(receiver_username=username, status='pending').all()
+
+def get_sent_friend_requests(username: str):
+    with Session(engine) as session:
+        # Assuming FriendRequest model has 'sender_username' and 'status' fields
+        return session.query(FriendRequest).filter_by(sender_username=username, status='pending').all()
+
+
