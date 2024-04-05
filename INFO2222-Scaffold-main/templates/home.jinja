@@ -27,6 +27,16 @@
         padding: 2px;
     }
 
+    #friends-list {
+        position: absolute;
+        right: 0;
+        top: 100px; /* Adjust based on header height */
+        width: 200px; /* Adjust based on desired width */
+        border-left: 1px solid black;
+        height: 400px;
+        overflow: auto;
+    }
+
     .text  {
         margin-top: 2px;
         margin-bottom: 2px;
@@ -106,6 +116,20 @@
             {% endfor %}
         </ul>
     </section>
+    <!-- Friends List -->
+    <section id="friends-list">
+        <h2>Friends</h2>
+        <ul>
+            {% if friends %}
+                {% for friend in friends %}
+                <li>{{ friend }}</li>
+                {% endfor %}
+            {% else %}
+                <li>No friends yet.</li>
+            {% endif %}
+        </ul>
+    </section>
+
 
 </main>
 

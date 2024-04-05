@@ -86,9 +86,13 @@ def home():
     username = request.args.get("username")
     received_requests = db.get_received_friend_requests(username)
     sent_requests = db.get_sent_friend_requests(username)
+    friends = db.get_friends(username)  # Get the list of friends
 
-    return render_template("home.jinja", username=request.args.get("username"),received_requests=received_requests, 
-                           sent_requests=sent_requests)
+    return render_template("home.jinja", username=username, received_requests=received_requests, 
+                           sent_requests=sent_requests, friends=friends)
+
+    # return render_template("home.jinja", username=request.args.get("username"),received_requests=received_requests, 
+    #                        sent_requests=sent_requests)
 
 # friend req
 @app.route("/send-friend-request", methods=["POST"])

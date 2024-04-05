@@ -137,5 +137,21 @@ def get_sent_friend_requests(username: str):
     with Session(engine) as session:
         # Assuming FriendRequest model has 'sender_username' and 'status' fields
         return session.query(FriendRequest).filter_by(sender_username=username, status='pending').all()
+    
+def get_friends(username: str):
+    with Session(engine) as session:
+        # Query the Friendship table for friendships involving the current user
+        friendships = session.query(Friendship).filter(
+            (Friendship.user_id == username) | (Friendship.friend_id == username)
+        ).all()
 
+        # Extract friend usernames
+        friends = set()
+        for friendship in friendships:
+            # Add the friend's username, excluding the current user's username
+            if friendship.user_id == username:
+                friends.add(friendship.friend_id)
+            else:
+                friends.add(friendship.user_id)
 
+        return list(friends)
