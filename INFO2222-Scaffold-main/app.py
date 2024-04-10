@@ -8,6 +8,7 @@ from flask import Flask, flash, redirect, render_template, request, abort, sessi
 from flask_socketio import SocketIO
 import db
 import secrets
+import ssl
 
 # import logging
 
@@ -70,6 +71,7 @@ def signup_user():
     
     if db.get_user(username) is None:
         db.insert_user(username, password)
+        session['username'] = username  # Automatically log in the user after signup
         return url_for('home', username=username)
     return "Error: User already exists!"
 
@@ -141,4 +143,9 @@ def decline_friend_request_route(request_id):
 
 
 if __name__ == '__main__':
-    socketio.run(app)
+    #socketio.run(app)
+    # for HTTPS Communication
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key')  # Adjust the paths accordingly
+        app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000)
+ 
