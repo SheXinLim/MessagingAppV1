@@ -34,9 +34,9 @@
 - [x] **Secure Password Storage (6 marks)**
   - [x] Properly store passwords on the server using hash and salt.
   
-- [ ] **HTTPS Communication (10 marks)**
-  - [ ] Use HTTPS to secure communication between the client and server.
-  - [ ] Ensure no browser warnings like “this site is not secure” appear.
+- [x] **HTTPS Communication (10 marks)**
+  - [x] Use HTTPS to secure communication between the client and server.
+  - [x] Ensure no browser warnings like “this site is not secure” appear.
   
 - [ ] **Authenticated Requests (15 marks)**
   - [ ] Ensure all requests to the server are properly authenticated (e.g., using a session token/cookie).
