@@ -4,7 +4,7 @@ this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
 
-from flask import Flask, flash, redirect, render_template, request, abort, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, abort, session, url_for
 from flask_socketio import SocketIO
 import db
 import secrets
@@ -83,9 +83,9 @@ def page_not_found(_):
 # home page, where the messaging app is
 @app.route("/home")
 def home():
-    if request.args.get("username") is None:
+    username = request.args.get("username") or session.get("username")
+    if username is None:
         abort(404)
-    username = request.args.get("username")
     received_requests = db.get_received_friend_requests(username)
     sent_requests = db.get_sent_friend_requests(username)
     friends = db.get_friends(username)  # Get the list of friends
@@ -125,10 +125,10 @@ def accept_friend_request_route(request_id):
         return "You must be logged in to accept friend requests", 403
 
     if db.accept_friend_request(int(request_id),username):
-        return "Friend request accepted!"
+        return jsonify(message="Friend request accepted!") 
     else:
-        return "Could not accept friend request"
-
+        return jsonify(message="Relog and try again") 
+    
 @app.route("/decline-friend-request/<request_id>", methods=["POST"])
 def decline_friend_request_route(request_id):
     username = session.get("username")  # Get username from session
@@ -137,11 +137,9 @@ def decline_friend_request_route(request_id):
 
     success = db.decline_friend_request(int(request_id), username)
     if success:
-        return "Friend request declined successfully"
+        return jsonify(message="Friend request declined successfully") 
     else:
-        return "Failed to decline friend request"
-
-
+        return jsonify(message="Relog and try again")
 if __name__ == '__main__':
     #socketio.run(app)
     # for HTTPS Communication

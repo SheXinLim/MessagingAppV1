@@ -50,7 +50,7 @@ def insert_user(username: str, password: str):
 def get_user(username: str):
     with Session(engine) as session:
         return session.get(User, username)
-
+  
 def send_friend_request(sender_username: str, receiver_username: str):
     with Session(engine) as session:
         # Check if both the sender and receiver exist in the database
@@ -73,16 +73,21 @@ def send_friend_request(sender_username: str, receiver_username: str):
              (FriendRequest.receiver_username == sender_username))
         ).first()
 
+        # If an existing request is found and it's declined, allow resending
+        if existing_request and existing_request.status == 'declined':
+            session.delete(existing_request)
+            session.commit()
+            existing_request = None
+
         if existing_request:
-            # Return some indication that the friend request already exists
+            # An existing friend request in a non-declined state is present, don't allow a new request
             return False
 
-        # If both users exist and no friend request exists, create a new friend request
+        # If no existing request is found, or the declined one was removed, create a new friend request
         friend_request = FriendRequest(sender_username=sender_username, receiver_username=receiver_username, status='pending')
         session.add(friend_request)
         session.commit()
         return True
-
 
 def get_friend_requests(username: str):
     with Session(engine) as session:
@@ -123,8 +128,7 @@ def decline_friend_request(request_id: int, username: str):
             friend_request.status = 'declined'
             session.commit()
             return True
-        # Remove the friend request from the database
-        session.delete(friend_request)
+        
         session.commit()
         return False
 

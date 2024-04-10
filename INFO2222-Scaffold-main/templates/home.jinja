@@ -57,6 +57,7 @@
     </ol>
 </nav>
 
+
 <h1>Messaging App </h1>
 
 <main>
@@ -95,12 +96,8 @@
         {% for request in received_requests %}
         <li>
             {{ request.sender_username }}
-            <form action="{{ url_for('accept_friend_request_route', request_id=request.id) }}" method="post" style="display: inline;">
-                <button type="submit">Accept</button>
-            </form>
-            <form action="{{ url_for('decline_friend_request_route', request_id=request.id) }}" method="post" style="display: inline;">
-                <button type="submit">Decline</button>
-            </form>
+            <button onclick="handleFriendRequest('accept', {{ request.id }})">Accept</button>
+            <button onclick="handleFriendRequest('decline', {{ request.id }})">Decline</button>
         </li>
         
         {% endfor %}
@@ -257,6 +254,32 @@
             console.error('There has been a problem with your fetch operation:', error);
         });
     }
+
+    //function to accept or decline friend request
+    function handleFriendRequest(action, requestId) {
+    fetch(`/${action}-friend-request/${requestId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ username: "{{ username }}" })  // Or any other data you might need
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();  // Assuming the server responds with JSON
+    })
+    .then(data => {
+        alert(data.message);  // Assuming the server responds with a JSON object that contains a message key
+    })
+    .catch((error) => {
+        console.error('There has been a problem with your fetch operation:', error);
+        alert('An error occurred.');
+    });
+}
+
     
 </script>
 {% endblock %}
