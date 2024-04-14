@@ -80,20 +80,6 @@ def join(sender_name, receiver_name):
     emit("incoming", (f"{sender_name} has joined the room. Now talking to {receiver_name}.", "green"), to=room_id)
     return room_id
 
-
-@socketio.on("start_private_conversation")
-def start_private_conversation(sender_name, receiver_name):
-    room_id = room.create_room(sender_name, receiver_name)
-    join_room(room_id)
-    emit("private_conversation_started", room_id, room=room_id)
-
-@socketio.on("private_message")
-def private_message(username, message, room_id):
-    emit("incoming", f"{username}: {message}", to=room_id)
-
-
-
-
 # leave room event handler
 @socketio.on("leave")
 def leave(username, room_id):

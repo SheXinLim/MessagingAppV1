@@ -19,8 +19,8 @@
   - [x] Users can approve or reject friend requests received from others.
 
 - [ ] **Secure Chatroom Functionality (30 marks)**
-  - [x] Users can click on a friend to open a chatroom.
-  - [x] Ensure secure communication in the chatroom if both users are online and are friends.
+  - [ ] Users can click on a friend to open a chatroom.
+  - [ ] Ensure secure communication in the chatroom if both users are online and are friends.
   - [ ] Encrypt messages so the server cannot read them.
   - [ ] Use Message Authentication Code (MAC) to ensure message integrity.
   
