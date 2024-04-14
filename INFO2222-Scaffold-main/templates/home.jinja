@@ -119,7 +119,7 @@
         <ul>
             {% if friends %}
                 {% for friend in friends %}
-                <li>{{ friend }}</li>
+                <li><a href="#" onclick="startPrivateConversation('{{ friend }}')">{{ friend }}</a></li>
                 {% endfor %}
             {% else %}
                 <li>No friends yet.</li>
@@ -211,6 +211,32 @@
         });
      
     }
+
+
+
+
+    function startPrivateConversation(friendUsername) {
+        socket.emit("join", username, friendUsername, (roomId) => {
+            if (roomId !== null) {
+                room_id = roomId;
+                Cookies.set("room_id", room_id);
+                $("#chat_box").hide();
+                $("#input_box").show();
+            } else {
+                alert("Failed to start a private conversation.");
+            }
+        });
+    }
+
+  
+
+    function sendPrivateMessage() {
+        let message = $("#message").val();
+        $("#message").val("");
+        socket.emit("private_message", username, message, room_id);  
+    }
+
+
 
     // function when the user clicks on "Leave Room"
     // emits a "leave" event, telling the server that we want to leave the room
