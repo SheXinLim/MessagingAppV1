@@ -4,22 +4,41 @@ this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
 
+from functools import wraps
 from flask import Flask, flash, jsonify, redirect, render_template, request, abort, session, url_for
 from flask_socketio import SocketIO
 import db
 import secrets
 import ssl
+import logging
+from flask_wtf.csrf import CSRFProtect
 
-# import logging
-
-# this turns off Flask Logging, uncomment this to turn off Logging
+# # this turns off Flask Logging, uncomment this to turn off Logging
 # log = logging.getLogger('werkzeug')
 # log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+csrf = CSRFProtect(app)
+
+# Define the decorator in your app.py
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # secret key used to sign the session cookie
 app.config['SECRET_KEY'] = secrets.token_hex()
+
+# Secure session cookie configuration
+app.config.update(
+    SESSION_COOKIE_SECURE=True,  # Only send cookies over HTTPS.
+    SESSION_COOKIE_HTTPONLY=True,  # Prevent access via JavaScript.
+    SESSION_COOKIE_SAMESITE='Lax'  # Guard against CSRF attacks.
+)
+
 socketio = SocketIO(app)
 
 # don't remove this!!
@@ -82,6 +101,7 @@ def page_not_found(_):
 
 # home page, where the messaging app is
 @app.route("/home")
+@login_required
 def home():
     username = request.args.get("username") or session.get("username")
     if username is None:
@@ -93,8 +113,11 @@ def home():
     return render_template("home.jinja", username=username, received_requests=received_requests, 
                            sent_requests=sent_requests, friends=friends)
 
-    # return render_template("home.jinja", username=request.args.get("username"),received_requests=received_requests, 
-    #                        sent_requests=sent_requests)
+@app.route('/logout')
+@login_required
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
 
 # friend req
 @app.route("/send-friend-request", methods=["POST"])
@@ -140,10 +163,18 @@ def decline_friend_request_route(request_id):
         return jsonify(message="Friend request declined successfully") 
     else:
         return jsonify(message="Relog and try again")
+
+# CSP header to your HTTP responses prevent Cross-Site Scripting (XSS)
+@app.after_request
+def set_csp_header(response):
+    csp_policy = "default-src 'self'; script-src 'self' https://trusted.cdn.com;"
+    response.headers.setdefault('Content-Security-Policy', csp_policy)
+    return response
+
 if __name__ == '__main__':
     #socketio.run(app)
     # for HTTPS Communication
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key')  # Adjust the paths accordingly
+        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key')
         app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000)
  
