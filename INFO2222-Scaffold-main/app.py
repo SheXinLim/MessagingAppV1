@@ -141,7 +141,7 @@ def decline_friend_request_route(request_id):
     else:
         return jsonify(message="Relog and try again")
 if __name__ == '__main__':
-    #socketio.run(app)
+    # socketio.run(app)
     # for HTTPS Communication
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key')  # Adjust the paths accordingly

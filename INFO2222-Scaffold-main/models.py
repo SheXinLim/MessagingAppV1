@@ -97,3 +97,9 @@ class Room():
             return None
         return self.dict[user]
     
+    def get_room_members(self, room_id: int):
+        return {username for username, id_ in self.dict.items() if id_ == room_id}
+
+    
+    
+  

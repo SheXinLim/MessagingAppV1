@@ -174,17 +174,49 @@
     // initializes the socket
     const socket = io();
 
+
+
     // an incoming message arrives, we'll add the message to the message box
     socket.on("incoming", (msg, color="black") => {
         add_message(msg, color);
     })
+
+
+
+
+
+
+
+
+
+
     
-    // we'll send the message to the server by emitting a "send" event
-    function send() {
-        let message = $("#message").val();
-        $("#message").val("");
-        socket.emit("send", username, message, room_id);  
-    } 
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // we emit a join room event to the server to join a room
     function join_room() {
@@ -210,6 +242,16 @@
             $("#input_box").show();
         });
      
+    }
+
+    function send() {
+        let message = $("#message").val();
+        $("#message").val("");
+        if (!room_id) {
+            alert("You must join a room before sending messages.");
+            return;
+        }
+        socket.emit("send", username, message, room_id);  
     }
 
 
