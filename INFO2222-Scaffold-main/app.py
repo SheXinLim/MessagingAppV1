@@ -3,13 +3,13 @@ app.py contains all of the server application
 this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
-
 from flask import Flask, flash, jsonify, redirect, render_template, request, abort, session, url_for
 from flask_socketio import SocketIO
 import db
 import secrets
 import ssl
 import re
+from datetime import datetime
 from datetime import timedelta
 
 # import logging
@@ -51,6 +51,36 @@ def login():
     return render_template("login.jinja")
 
 # handles a post request when the user clicks the log in button
+# @app.route("/login/user", methods=["POST"])
+# def login_user():
+#     if not request.is_json:
+#         abort(404)
+
+#     username = request.json.get("username")
+#     password = request.json.get("password")
+
+#     user =  db.get_user(username)
+#     if user is None:
+#         return "Error: User does not exist!"
+#     # Check if account is currently locked
+
+#     if user.lockout_until and datetime.now() < user.lockout_until:
+#         return "Account is locked. Please try again later."
+    
+#     if not db.check_password(password, user.password):
+#         # Increment failed attempts and check if lockout is necessary
+#         user.failed_attempts += 1
+#         if user.failed_attempts >= 3:
+#             user.lockout_until = datetime.now() + timedelta(minutes=30)
+#             db.save_user(user)
+#             return "Account is locked. Please try again in 30 minutes."
+#         return "Error: Password does not match!"
+#     # Reset failed attempts on successful login
+#     user.failed_attempts = 0
+#     user.lockout_until = None
+#     session['username'] = username  # Set username in session
+#     return url_for('home', username=request.json.get("username"))
+
 @app.route("/login/user", methods=["POST"])
 def login_user():
     if not request.is_json:
@@ -58,15 +88,30 @@ def login_user():
 
     username = request.json.get("username")
     password = request.json.get("password")
+    user = db.get_user(username)
 
-    user =  db.get_user(username)
     if user is None:
         return "Error: User does not exist!"
-    
+
+    # Check if account is currently locked
+    if user.lockout_until and datetime.now() < user.lockout_until:
+        return "Account is locked. Please try again later."
+
     if not db.check_password(password, user.password):
+        user.failed_attempts += 1
+        if user.failed_attempts >= 3:
+            user.lockout_until = datetime.now() + timedelta(minutes=30)
+            db.save_user(user)
+            return "Account is locked. Please try again in 30 minutes."
+        db.save_user(user)
         return "Error: Password does not match!"
-    session['username'] = username  # Set username in session
-    return url_for('home', username=request.json.get("username"))
+
+    # Reset failed attempts on successful login
+    user.failed_attempts = 0
+    user.lockout_until = None
+    db.save_user(user)
+    session['username'] = username
+    return (url_for('home', username=username))
 
 # handles a get request to the signup page
 @app.route("/signup")

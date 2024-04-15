@@ -42,7 +42,7 @@ def check_password(plain_password, stored_password):
 def insert_user(username: str, password: str):
     with Session(engine) as session:
         hashed_password = hash_password(password)
-        user = User(username=username, password=hashed_password)
+        user = User(username=username, password=hashed_password, failed_attempts=0, lockout_until=None)
         session.add(user)
         session.commit()
 
@@ -159,3 +159,11 @@ def get_friends(username: str):
                 friends.add(friendship.user_id)
 
         return list(friends)
+    
+def save_user(user):
+    """
+    Save or update user information in the database.
+    """
+    with Session(engine) as session:
+        session.merge(user)  # The merge() method is used to either update an existing row or insert a new row.
+        session.commit()
