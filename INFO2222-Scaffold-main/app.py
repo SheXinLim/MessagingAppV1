@@ -9,6 +9,8 @@ from flask_socketio import SocketIO
 import db
 import secrets
 import ssl
+import re
+from datetime import timedelta
 
 # import logging
 
@@ -24,6 +26,19 @@ socketio = SocketIO(app)
 
 # don't remove this!!
 import socket_routes
+
+def validate_password(password):
+    if len(password) < 8:
+        return False
+    if not re.search("[a-z]", password):
+        return False
+    if not re.search("[A-Z]", password):
+        return False
+    if not re.search("[0-9]", password):
+        return False
+    if not re.search("[!@#$%^&*(),.?\":{}|<>]", password):
+        return False
+    return True
 
 # index page
 @app.route("/")
@@ -68,12 +83,16 @@ def signup_user():
 
     if not username or not password:
         return "Error: Username and password are required."
-    
-    if db.get_user(username) is None:
+
+    if db.get_user(username) is not None:
+        return "Error: User already exists!"
+    # Check if the password meets the requirements
+    elif not validate_password(password):
+        return "Error: Password does not meet security requirements."
+    else:
         db.insert_user(username, password)
         session['username'] = username  # Automatically log in the user after signup
         return url_for('home', username=username)
-    return "Error: User already exists!"
 
 # handler when a "404" error happens
 @app.errorhandler(404)
@@ -144,6 +163,6 @@ if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key')  # Adjust the paths accordingly
-        app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000)
+        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
+        app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
  

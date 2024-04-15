@@ -56,4 +56,10 @@
             window.open(res.data, "_self")
         }
     </script>
+    <script>
+        setTimeout(function() {
+            alert('Session timed out. You will be redirected to the homepage.');
+            window.location.href = '{{ url_for("index") }}'; // Redirect to the index page
+        }, 180000); // 180000 milliseconds = 3 minutes
+    </script>
 {% endblock %}
