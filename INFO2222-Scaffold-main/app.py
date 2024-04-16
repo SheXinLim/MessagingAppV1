@@ -213,7 +213,8 @@ def decline_friend_request_route(request_id):
 if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
-        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
         app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
  
