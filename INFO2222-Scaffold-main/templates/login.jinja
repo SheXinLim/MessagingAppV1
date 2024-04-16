@@ -16,13 +16,18 @@ Log in page
 
     <script>
         function isValidURL(string) {
-            if (string.length == 0) {
+            if (string.length === 0) {
                 return false;
             }
-            if (string[0] == "/") {
-                return true;
+            if (string[0] === "/") {
+                return true;  // Allow relative URLs
             }
-            return false;
+            try {
+                new URL(string);
+                return true;  // URL is well-formed
+            } catch (_) {
+                return false;  // Malformed URL
+            }
         }
 
         async function login() {

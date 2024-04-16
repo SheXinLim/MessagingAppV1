@@ -4,7 +4,7 @@ this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
 from flask import Flask, flash, jsonify, redirect, render_template, request, abort, session, url_for
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import db
 import secrets
 import ssl
@@ -17,8 +17,30 @@ from datetime import timedelta
 # this turns off Flask Logging, uncomment this to turn off Logging
 # log = logging.getLogger('werkzeug')
 # log.setLevel(logging.ERROR)
-
+def csp_policy_string(policy_dict):
+    return "; ".join([f"{key} {' '.join(val) if isinstance(val, list) else val}" for key, val in policy_dict.items()])
+    
 app = Flask(__name__)
+@app.after_request
+def apply_csp(response):
+    policy = {
+    "default-src": "'self'",
+    "script-src": [
+        "'self'",
+        "https://cdnjs.cloudflare.com",  # Allow scripts from CDN for Crypto-JS
+        "'unsafe-inline'" 
+    ],
+    "style-src": "'self' 'unsafe-inline'",  # Allows inline styles;
+    "img-src": "'self'",
+    "connect-src": "'self'",  # Restricts the URLs which can be loaded using script interfaces
+    "font-src": "'self'",  # Fonts loading
+    "object-src": "'none'",  # Prevents object, embed, and applet elements from rendering
+    "frame-ancestors": "'none'"  # Protects against clickjacking
+}
+
+    response.headers['Content-Security-Policy'] = csp_policy_string(policy)
+    return response
+
 
 # secret key used to sign the session cookie
 app.config['SECRET_KEY'] = secrets.token_hex()
