@@ -3,45 +3,75 @@ Sign up page, pretty much the same as login.
 -->
 {% extends 'base.jinja' %}
 
+{% block content %}
+<h1>Sign Up</h1>
+<p>Username</p>
+<input id="username"/>
+<p>Password</p>
+<input id="password" type="password"/>
+<button onclick="signup()">Sign up</button>
 
-{% block content %} 
-    <h1>Sign Up</h1>
-    <p>Username</p>
-    <input id="username"/>
-    <p>Password</p>
-    <input id="password" type="password"/>
-    <button onclick="signup()">Sign up</button>
+<!-- Include Crypto-JS for hashing password client-side -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
 
-    <script>
-         function isValidURL(string) {
-            if (string.length == 0) {
-                return false;
-            }
-            if (string[0] == "/") {
-                return true;
-            }
+<script>
+    function isValidURL(string) {
+        if (string.length == 0) {
             return false;
         }
-
-        // this function is identical to login(), see login.jinja
-        async function signup() {
-            let loginURL = "{{ url_for('signup_user') }}";
-            let res = await axios.post(loginURL, {
-                username: $("#username").val(),
-                password: $("#password").val()
-            });
-            if (!isValidURL(res.data)) {
-                alert(res.data);
-                return;
-            }
-            window.open(res.data, "_self")
+        if (string[0] == "/") {
+            return true;
         }
-    </script>
+        return false;
+    }
+    function validatePassword(password) {
+        if (password.length < 8) {
+                return false;
+        }
+        if (!/[a-z]/.test(password)) {
+            return false;
+        }
+        if (!/[A-Z]/.test(password)) {
+            return false;
+        }
+        if (!/[0-9]/.test(password)) {
+            return false;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            return false;
+        }
+        return true;
+    }  
 
-    <script>
-        setTimeout(function() {
-            alert('Session timed out. You will be redirected to the homepage.');
-            window.location.href = '{{ url_for("index") }}'; // Redirect to the index page
-        }, 180000); // 180000 milliseconds = 3 minutes
-    </script>
+    async function signup() {
+        let username = document.getElementById('username').value;
+        let password = document.getElementById('password').value;
+        if (!validatePassword(password)) {
+            alert("Password does not meet security requirements.");
+            return;
+        }
+
+        // Hash the password using Crypto-JS SHA256
+        let hashedPassword = CryptoJS.SHA256(password).toString();
+
+        let signupURL = "{{ url_for('signup_user') }}";
+        let res = await axios.post(signupURL, {
+            username: username,
+            password: hashedPassword // Send the hashed password instead of the plaintext
+        });
+
+        if (!isValidURL(res.data)) {
+            alert(res.data);
+            return;
+        }
+        window.open(res.data, "_self");
+    }
+</script>
+
+<script>
+    setTimeout(function() {
+        alert('Session timed out. You will be redirected to the homepage.');
+        window.location.href = '{{ url_for("index") }}'; // Redirect to the index page
+    }, 180000); // 180000 milliseconds = 3 minutes
+</script>
 {% endblock %}

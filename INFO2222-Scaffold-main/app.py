@@ -27,19 +27,6 @@ socketio = SocketIO(app)
 # don't remove this!!
 import socket_routes
 
-def validate_password(password):
-    if len(password) < 8:
-        return False
-    if not re.search("[a-z]", password):
-        return False
-    if not re.search("[A-Z]", password):
-        return False
-    if not re.search("[0-9]", password):
-        return False
-    if not re.search("[!@#$%^&*(),.?\":{}|<>]", password):
-        return False
-    return True
-
 # index page
 @app.route("/")
 def index():
@@ -131,9 +118,6 @@ def signup_user():
 
     if db.get_user(username) is not None:
         return "Error: User already exists!"
-    # Check if the password meets the requirements
-    elif not validate_password(password):
-        return "Error: Password does not meet security requirements."
     else:
         db.insert_user(username, password)
         session['username'] = username  # Automatically log in the user after signup
