@@ -19,7 +19,17 @@ from datetime import timedelta
 # log.setLevel(logging.ERROR)
 def csp_policy_string(policy_dict):
     return "; ".join([f"{key} {' '.join(val) if isinstance(val, list) else val}" for key, val in policy_dict.items()])
-    
+
+def emit_friend_updates(username):
+    # Example to get data and emit correctly
+    received_requests = db.get_received_friend_requests(username)
+    sent_requests = db.get_sent_friend_requests(username)
+    # Assuming the user is subscribed to their own room using their username
+    socketio.emit('update_friend_requests', {
+        'received_requests': received_requests,
+        'sent_requests': sent_requests
+    }, room=username)
+
 app = Flask(__name__)
 @app.after_request
 def apply_csp(response):
@@ -100,20 +110,20 @@ def login_user():
     user = db.get_user(username)
 
     if user is None:
-        return "Error: User does not exist!"
+        return jsonify({"error": "User does not exist!"})
 
     # Check if account is currently locked
     if user.lockout_until and datetime.now() < user.lockout_until:
-        return "Account is locked. Please try again later."
+        return jsonify({"error": "Account is locked. Please try again later."})
 
     if not db.check_password(password, user.password):
         user.failed_attempts += 1
         if user.failed_attempts >= 3:
             user.lockout_until = datetime.now() + timedelta(minutes=30)
             db.save_user(user)
-            return "Account is locked. Please try again in 30 minutes."
+            return jsonify({"error": "Account is locked. Please try again in 30 minutes."})
         db.save_user(user)
-        return "Error: Password does not match!"
+        return jsonify({"error": "Password does not match!"})
 
     # Reset failed attempts on successful login
     user.failed_attempts = 0
@@ -139,11 +149,13 @@ def signup_user():
         return "Error: Username and password are required."
 
     if db.get_user(username) is not None:
-        return "Error: User already exists!"
+        # return "Error: User already exists!"
+        return jsonify({"error": "User already exists!"})
     else:
         db.insert_user(username, password)
         session['username'] = username  # Automatically log in the user after signup
-        return url_for('home', username=username)
+        # return url_for('home', username=username)
+        return jsonify({"redirect": url_for('home')})
 
 # handler when a "404" error happens
 @app.errorhandler(404)
@@ -179,14 +191,31 @@ def send_friend_request_route():
         return "You must be logged in to send friend requests"
 
     if db.send_friend_request(sender_username, receiver_username):
+        # Emit an update to both the sender and receiver
+        emit_friend_updates(sender_username)
+        emit_friend_updates(receiver_username)
         return "Friend request sent successfully!"
     else:
         return "Friend request could not be sent (user may not exist or request already sent)"
 
-@app.route("/friend-requests/<username>")
-def friend_requests(username):
-    requests = db.get_friend_requests(username)
-    return {"friendRequests": requests}
+# @app.route("/friend-requests/<username>")
+# def friend_requests(username):
+#     requests = db.get_friend_requests(username)
+#     return {"friendRequests": requests}
+@app.route('/friend-requests')
+def friend_requests():
+    username = session.get('username')
+    if not username:
+        flash('You need to login first.')
+        return redirect(url_for('login'))
+
+    received_requests = db.get_received_friend_requests(username)
+    sent_requests = db.get_sent_friend_requests(username)
+
+    return render_template('friend_requests.jinja', 
+                           received_requests=received_requests, 
+                           sent_requests=sent_requests,
+                           username=username)
 
 @app.route("/accept-friend-request/<request_id>", methods=["POST"])
 def accept_friend_request_route(request_id):
@@ -210,6 +239,14 @@ def decline_friend_request_route(request_id):
         return jsonify(message="Friend request declined successfully") 
     else:
         return jsonify(message="Relog and try again")
+    
+@app.route('/logout')
+def logout():
+    session.clear()  # Clear all data from the session
+    flash('You have been logged out.')
+    return redirect(url_for('login'))  # Redirect to the login page or home page
+
+
 if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
