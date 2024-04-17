@@ -38,16 +38,33 @@ Log in page
             const hashedPassword = CryptoJS.SHA256(password).toString();
 
             let loginURL = "{{ url_for('login_user') }}";
-            let res = await axios.post(loginURL, {
-                username: username,
-                password: hashedPassword // Send the hashed password instead of the plaintext
-            });
+            try {
+                let response = await axios.post(loginURL, {
+                    username: username,
+                    password: hashedPassword // Send the hashed password instead of the plaintext
+                });
 
-            if (!isValidURL(res.data)) {
-                alert(res.data);
-                return;
+                // Check the structure of the response to see if it's a success message or an error
+                if (response.data && response.data.redirect) {
+                    // If there is a 'redirect' key in the response, navigate to that URL
+                    window.location.href = response.data.redirect;
+                } else if (response.data && response.data.error) {
+                    // If there is an 'error' key, show the error message
+                    alert(response.data.error);
+                } else {
+                    // If the response is unexpected, log it and show a default message
+                    console.log('Unexpected response:', response.data);
+                    alert("An unexpected error occurred.");
+                }
+            } catch (error) {
+                // Handle errors that occur during the request
+                console.error('Login error:', error);
+                if (error.response && error.response.data) {
+                    alert(error.response.data);
+                } else {
+                    alert('An unknown error occurred. Please try again.');
+                }
             }
-            window.open(res.data, "_self");
         }
     </script>
 

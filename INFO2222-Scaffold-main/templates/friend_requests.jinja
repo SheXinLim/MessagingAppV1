@@ -1,0 +1,92 @@
+{% extends 'base.jinja' %}
+
+{% block content %}
+<style>
+    .friend-requests-container {
+        margin: 20px;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    li {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        background-color: #f8f8f8;
+    }
+    button {
+        margin-left: 10px;
+    }
+</style>
+
+<div class="friend-requests-container">
+    <h1>Friend Requests</h1>
+
+    <!-- Section for received friend requests -->
+    <section>
+        <h2>Received Friend Requests</h2>
+        <ul id="received-requests-list">
+            <!-- Dynamic list populated by JavaScript -->
+        </ul>
+    </section>
+
+    <!-- Section for sent friend requests -->
+    <section>
+        <h2>Sent Friend Requests</h2>
+        <ul id="sent-requests-list">
+            <!-- Dynamic list populated by JavaScript -->
+        </ul>
+    </section>
+</div>
+
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+// Handler for receiving updated friend requests
+socket.on('update_friend_requests', data => {
+    updateReceivedRequests(data.received_requests);
+    updateSentRequests(data.sent_requests);
+});
+
+function updateReceivedRequests(requests) {
+    const list = document.getElementById('received-requests-list');
+    list.innerHTML = '';  // Clear the list first
+    requests.forEach(request => {
+        list.innerHTML += `<li>${request.sender_username} wants to be your friend!
+            <button onclick="handleFriendRequest('accept', ${request.id})">Accept</button>
+            <button onclick="handleFriendRequest('decline', ${request.id})">Decline</button>
+        </li>`;
+    });
+}
+
+function updateSentRequests(requests) {
+    const list = document.getElementById('sent-requests-list');
+    list.innerHTML = '';  // Clear the list first
+    requests.forEach(request => {
+        list.innerHTML += `<li>Waiting for ${request.receiver_username} to respond.</li>`;
+    });
+}
+
+// Function to handle accepting or declining friend requests
+function handleFriendRequest(action, requestId) {
+    fetch(`/${action}-friend-request/${requestId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json())
+    .then(data => {
+        alert(data.message);  // Alert the user with the response message
+        if (data.status === 'success') {
+            socket.emit('request_updated');  // Notify the server to emit the latest updates
+        }
+    })
+    .catch(error => {
+        console.error('Error handling friend request:', error);
+        alert('An error occurred while processing the request.');
+    });
+}
+</script>
+{% endblock %}
