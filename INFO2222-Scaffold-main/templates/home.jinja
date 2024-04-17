@@ -134,6 +134,11 @@
 </main>
 
 <script src="/static/js/libs/socket.io.min.js"></script>
+
+{# encrypt  #}
+{# <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> #}
+
+
 <script>
     let room_id = 0;
 
@@ -183,6 +188,13 @@
     socket.on("incoming", (msg, color="black") => {
         add_message(msg, color);
     })
+
+    //encrypt
+    //socket.on("incoming", (encryptedMsg, color="black") => {
+        // Decrypt the message before displaying
+        //let decryptedMsg = decryptMessage(encryptedMsg);
+        //add_message(decryptedMsg, color);
+    //})
 
 
 
@@ -254,8 +266,31 @@
             alert("You must join a room before sending messages.");
             return;
         }
+        // two lines encrypt
+        // let encryptedMessage = encryptMessage(message);
+        // socket.emit("send", username, encryptedMessage, room_id); 
+        
+
         socket.emit("send", username, message, room_id);  
     }
+
+    // encrypt
+    //function encryptMessage(message) {
+        // Use the password as the encryption key
+       //let key = "{{ password }}"; // Replace "{{ password }}" with the user's password
+        // Encrypt the message using AES encryption
+        //let encryptedMessage = CryptoJS.AES.encrypt(message, key).toString();
+        //return encryptedMessage;
+    //}
+
+    // encrypt
+    //function decryptMessage(encryptedMessage) {
+        // Use the password as the decryption key
+        //let key = "{{ password }}"; // Replace "{{ password }}" with the user's password
+        // Decrypt the message using AES decryption
+        //let decryptedMessage = CryptoJS.AES.decrypt(encryptedMessage, key).toString(CryptoJS.enc.Utf8);
+        //return decryptedMessage;
+    //}
 
 
 
@@ -272,6 +307,8 @@
             }
         });
     }
+
+
 
   
 

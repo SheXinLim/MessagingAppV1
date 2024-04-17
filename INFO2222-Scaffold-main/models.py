@@ -105,4 +105,17 @@ class Room():
 
     
     
-  
+   
+class Message(Base):
+    __tablename__ = "message"
+
+    id = Column(Integer, primary_key=True)
+    sender_username = Column(String, ForeignKey('user.username'))
+    receiver_username = Column(String, ForeignKey('user.username'))
+    content = Column(String)
+    timestamp = Column(DateTime, default=datetime.now)
+
+
+    sender = relationship("User", foreign_keys=[sender_username])
+    receiver = relationship("User", foreign_keys=[receiver_username])
+

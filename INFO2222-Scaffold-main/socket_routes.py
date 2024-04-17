@@ -5,43 +5,54 @@ file containing all the routes related to socket.io
 
 
 from flask_socketio import join_room, emit, leave_room
+from requests import Session
 from flask import request
+from db import engine
+from sqlalchemy.orm import sessionmaker, join
 
 try:
     from __main__ import socketio
 except ImportError:
     from app import socketio
 
-from models import Room
+from models import Room, Message 
 
 import db
 
 room = Room()
 
-# when the client connects to a socket
-# this event is emitted when the io() function is called in JS
+Session = sessionmaker(bind=engine)
+
+
+user_rooms = {}
+
+user_messages = {}
+
+
+user_left_status = {}
+
 @socketio.on('connect')
 def connect():
     username = request.cookies.get("username")
     room_id = request.cookies.get("room_id")
     if room_id is None or username is None:
         return
-    # socket automatically leaves a room on client disconnect
-    # so on client connect, the room needs to be rejoined
+
     join_room(int(room_id))
+
+    with Session() as session:
+
+        # Fetch messages sent by the user
+        user_messages = session.query(Message).filter((Message.sender_username == username) | (Message.receiver_username == username)).all()
+        for message in user_messages:
+            emit("incoming", f"{message.sender_username}: {message.content}")
+
     emit("incoming", (f"{username} has connected", "green"), to=int(room_id))
 
+    with Session() as session:
+        session.add(Message(sender_username=username, content=f"{username} has connected"))
+        session.commit()
 
-
-# # event when client disconnects
-# # quite unreliable use sparingly
-# @socketio.on('disconnect')
-# def disconnect():
-#     username = request.cookies.get("username")
-#     room_id = request.cookies.get("room_id")
-#     if room_id is None or username is None:
-#         return
-#     emit("incoming", (f"{username} has disconnected", "red"), to=int(room_id))
 
 @socketio.on('disconnect')
 def disconnect():
@@ -55,10 +66,16 @@ def disconnect():
     
     # Leave the room
     leave_room(room_id)
-    
+
     # Clear any data related to the conversation
     if username in room_relationships:
         del room_relationships[username]
+
+
+    with Session() as session:
+        session.add(Message(sender_username=username, content=f"{username} has disconnected"))
+        session.commit()
+
 
 
 
@@ -90,6 +107,8 @@ def join(sender_name, receiver_name):
     if room_id is not None:
         room.join_room(sender_name, room_id)
         join_room(room_id)
+
+        user_left_status[sender_name] = False
         
         # Add sender-receiver relationship to the room_relationships dictionary
         room_relationships.setdefault(sender_name, set()).add(receiver_name)
@@ -98,17 +117,32 @@ def join(sender_name, receiver_name):
         emit("incoming", (f"{sender_name} has joined the room.", "green"), to=room_id, include_self=False)
         # Emit only to the sender
         emit("incoming", (f"{sender_name} has joined the room. Now talking to {receiver_name}.", "green"))
+        
+        with Session() as session:
+            session.add(Message(sender_username=sender_name, content=f"{sender_name} has joined the room. Now talking to {receiver_name}."))
+            session.commit()
+
+        
+
         joined_users.add(sender_name)
         return room_id
 
     # If the user isn't inside any room
     room_id = room.create_room(sender_name, receiver_name)
     join_room(room_id)
+
     
     # Add sender-receiver relationship to the room_relationships dictionary
     room_relationships.setdefault(sender_name, set()).add(receiver_name)
     
     emit("incoming", (f"{sender_name} has joined the room. Now talking to {receiver_name}.", "green"), to=room_id)
+
+    with Session() as session:
+        session.add(Message(sender_username=sender_name, content=f"{sender_name} has joined the room."))
+        session.commit()
+
+    
+
     joined_users.add(sender_name)
     return room_id
 
@@ -135,52 +169,23 @@ def send(username, message, room_id):
 
     room_members = room.dict.values() 
     
-    if len(room_members) > 1 :
+    if len(room_members) > 1:
+        # Emit the message to the room
         emit("incoming", f"{username}: {message}", to=room_id)
 
-
-# # send message event handler
-# @socketio.on("send")
-# def send(username, message, room_id):
-#     emit("incoming", (f"{username}: {message}"), to=room_id)
-
-
-
-
-    
-# # join room event handler
-# # sent when the user joins a room
-# @socketio.on("join")
-# def join(sender_name, receiver_name):
-    
-#     receiver = db.get_user(receiver_name)
-#     if receiver is None:
-#         return "Unknown receiver!"
-    
-#     sender = db.get_user(sender_name)
-#     if sender is None:
-#         return "Unknown sender!"
-
-#     room_id = room.get_room_id(receiver_name)
-
-#     # if the user is already inside of a room 
-#     if room_id is not None:
+        # Check if the sender has left the room
+        if user_left_status.get(username, False):
+            return  # Don't store or emit the message if the sender has left the room
         
-#         room.join_room(sender_name, room_id)
-#         join_room(room_id)
-#         # emit to everyone in the room except the sender
-#         emit("incoming", (f"{sender_name} has joined the room.", "green"), to=room_id, include_self=False)
-#         # emit only to the sender
-#         emit("incoming", (f"{sender_name} has joined the room. Now talking to {receiver_name}.", "green"))
-#         return room_id
+        # Save message to the database
+        with Session() as session:  # Create a session instance
+            new_message = Message(sender_username=sender_name, receiver_username=receiver_name, content=message)
+            session.add(new_message)
+            session.commit()
 
-#     # if the user isn't inside of any room, 
-#     # perhaps this user has recently left a room
-#     # or is simply a new user looking to chat with someone
-#     room_id = room.create_room(sender_name, receiver_name)
-#     join_room(room_id)
-#     emit("incoming", (f"{sender_name} has joined the room. Now talking to {receiver_name}.", "green"), to=room_id)
-#     return room_id
+            # print(f"Message stored in the database: {username}: {message}")
+      
+
 
 
 @socketio.on("start_private_conversation")
@@ -200,5 +205,15 @@ def private_message(username, message, room_id):
 @socketio.on("leave")
 def leave(username, room_id):
     emit("incoming", (f"{username} has left the room.", "red"), to=room_id)
+    
+    # if username in user_messages:
+    #     user_messages[username] = [msg for msg in user_messages[username] if msg[2] != room_id]
+
+    user_left_status[username] = True
+
+    with Session() as session:
+        session.add(Message(sender_username=username, content=f"{username} has left the room."))
+        session.commit()
+
     leave_room(room_id)
     room.leave_room(username)
