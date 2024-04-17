@@ -21,14 +21,19 @@ def csp_policy_string(policy_dict):
     return "; ".join([f"{key} {' '.join(val) if isinstance(val, list) else val}" for key, val in policy_dict.items()])
 
 def emit_friend_updates(username):
-    # Example to get data and emit correctly
     received_requests = db.get_received_friend_requests(username)
     sent_requests = db.get_sent_friend_requests(username)
+
+    # Convert FriendRequest objects to dictionaries
+    received_requests_data = [{'sender_username': req.sender_username, 'id': req.id} for req in received_requests]
+    sent_requests_data = [{'receiver_username': req.receiver_username, 'id': req.id} for req in sent_requests]
+
     # Assuming the user is subscribed to their own room using their username
     socketio.emit('update_friend_requests', {
-        'received_requests': received_requests,
-        'sent_requests': sent_requests
+        'received_requests': received_requests_data,
+        'sent_requests': sent_requests_data
     }, room=username)
+
 
 app = Flask(__name__)
 @app.after_request
@@ -249,7 +254,6 @@ def logout():
 if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
-        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
         app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
