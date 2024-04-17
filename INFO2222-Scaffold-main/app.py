@@ -20,21 +20,6 @@ from datetime import timedelta
 def csp_policy_string(policy_dict):
     return "; ".join([f"{key} {' '.join(val) if isinstance(val, list) else val}" for key, val in policy_dict.items()])
 
-def emit_friend_updates(username):
-    received_requests = db.get_received_friend_requests(username)
-    sent_requests = db.get_sent_friend_requests(username)
-
-    # Convert FriendRequest objects to dictionaries
-    received_requests_data = [{'sender_username': req.sender_username, 'id': req.id} for req in received_requests]
-    sent_requests_data = [{'receiver_username': req.receiver_username, 'id': req.id} for req in sent_requests]
-
-    # Assuming the user is subscribed to their own room using their username
-    socketio.emit('update_friend_requests', {
-        'received_requests': received_requests_data,
-        'sent_requests': sent_requests_data
-    }, room=username)
-
-
 app = Flask(__name__)
 @app.after_request
 def apply_csp(response):
@@ -195,9 +180,6 @@ def send_friend_request_route():
         return "You must be logged in to send friend requests"
 
     if db.send_friend_request(sender_username, receiver_username):
-        # Emit an update to both the sender and receiver
-        emit_friend_updates(sender_username)
-        emit_friend_updates(receiver_username)
         return "Friend request sent successfully!"
     else:
         return "Friend request could not be sent (user may not exist or request already sent)"
@@ -216,9 +198,13 @@ def friend_requests():
     received_requests = db.get_received_friend_requests(username)
     sent_requests = db.get_sent_friend_requests(username)
 
+    # Convert FriendRequest objects to dictionaries
+    received_requests_data = [{'sender_username': req.sender_username, 'id': req.id} for req in received_requests]
+    sent_requests_data = [{'receiver_username': req.receiver_username, 'id': req.id} for req in sent_requests]
+
     return render_template('friend_requests.jinja', 
-                           received_requests=received_requests, 
-                           sent_requests=sent_requests,
+                           received_requests=received_requests_data, 
+                           sent_requests=sent_requests_data,
                            username=username)
 
 @app.route("/accept-friend-request/<request_id>", methods=["POST"])
@@ -250,11 +236,37 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('login'))  # Redirect to the login page or home page
 
+@app.route('/api/friend-requests')
+def api_friend_requests():
+    username = session.get('username')
+    if not username:
+        return jsonify({'error': 'User not logged in'}), 403
+
+    received_requests = db.get_received_friend_requests(username)
+    sent_requests = db.get_sent_friend_requests(username)
+
+    # Convert FriendRequest objects to dictionaries
+    received_requests_data = [{'sender_username': req.sender_username, 'id': req.id} for req in received_requests]
+    sent_requests_data = [{'receiver_username': req.receiver_username, 'id': req.id} for req in sent_requests]
+
+    return jsonify({
+        'received_requests': received_requests_data,
+        'sent_requests': sent_requests_data
+    })
+
+@app.route('/api/friends-list')
+def get_friends_list():
+    username = session.get('username')
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 403
+    friends = db.get_friends(username)  # This should return a list of friend usernames
+    return jsonify({'friends': friends})
+
 
 if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
-        app.run(debug=True, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
+        app.run(debug=False, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
  

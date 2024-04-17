@@ -199,8 +199,6 @@ def private_message(username, message, room_id):
     emit("incoming", f"{username}: {message}", to=room_id)
 
 
-
-
 # leave room event handler
 @socketio.on("leave")
 def leave(username, room_id):
