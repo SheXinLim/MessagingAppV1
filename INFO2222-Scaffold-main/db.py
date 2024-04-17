@@ -39,10 +39,10 @@ def check_password(plain_password, stored_password):
     return new_hashed_password == hashed_password
 
 # Modify the insert_user function to hash password before storing
-def insert_user(username: str, password: str):
+def insert_user(username: str, password: str, salt:str):
     with Session(engine) as session:
         hashed_password = hash_password(password)
-        user = User(username=username, password=hashed_password, failed_attempts=0, lockout_until=None)
+        user = User(username=username, password=hashed_password, salt=salt, failed_attempts=0, lockout_until=None)
         session.add(user)
         session.commit()
 

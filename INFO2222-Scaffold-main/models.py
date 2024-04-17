@@ -30,6 +30,7 @@ class User(Base):
     # in other words we've mapped the username Python object property to an SQL column of type String 
     username: Mapped[str] = mapped_column(String, primary_key=True)
     password: Mapped[str] = mapped_column(String)
+    salt: Mapped[str] = mapped_column(String)
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     lockout_until: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 

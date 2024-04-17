@@ -15,6 +15,14 @@ Sign up page, pretty much the same as login.
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
 
 <script>
+    function generateSalt(length) {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let salt = '';
+        for (let i = 0; i < length; i++) {
+            salt += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return salt;
+    }
     function isValidURL(string) {
         if (string.length === 0) {
             return false;
@@ -57,13 +65,16 @@ Sign up page, pretty much the same as login.
         }
 
         // Hash the password using Crypto-JS SHA256
-        let hashedPassword = CryptoJS.SHA256(password).toString();
+        let salt = generateSalt(16); // Generate a 16 character salt
+        let saltPassword = password + salt; // Append salt to password
+        let hashedPassword = CryptoJS.SHA256(saltPassword).toString();
 
         let signupURL = "{{ url_for('signup_user') }}";
         try {
             let response = await axios.post(signupURL, {
                 username: username,
-                password: hashedPassword // Send the hashed password instead of the plaintext
+                password: hashedPassword, // Send the hashed password instead of the plaintext
+                salt: salt
             });
 
             // Check the structure of the response to see if it's a success message or an error

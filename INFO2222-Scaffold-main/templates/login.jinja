@@ -13,6 +13,8 @@ Log in page
 
     <!-- Include Crypto-JS for hashing password client-side -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 
     <script>
         function isValidURL(string) {
@@ -29,35 +31,52 @@ Log in page
                 return false;  // Malformed URL
             }
         }
+        async function getSalt(username) {
+            try {
+                let response = await axios.post('/get_salt', { username: username });
+                if (response.data.salt) {
+                    return response.data.salt;
+                } else {
+                    throw new Error('Salt not found or no username provided');
+                }
+            } catch (error) {
+                console.error('Error fetching salt:', error);
+                return null; // Handle error appropriately
+            }
+        }
 
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // Hash the password using Crypto-JS SHA256
-            const hashedPassword = CryptoJS.SHA256(password).toString();
+            // First, get the salt for the user
+            const salt = await getSalt(username);
+            if (!salt) {
+                alert('User does not exist');
+                return;
+            }
+
+            // Hash the password with the salt
+            const saltedPassword = password + salt;
+            const hashedPassword = CryptoJS.SHA256(saltedPassword).toString();
 
             let loginURL = "{{ url_for('login_user') }}";
             try {
                 let response = await axios.post(loginURL, {
                     username: username,
-                    password: hashedPassword // Send the hashed password instead of the plaintext
+                    password: hashedPassword  // Send the salted and hashed password
                 });
 
-                // Check the structure of the response to see if it's a success message or an error
+                // Handle the response as before
                 if (response.data && response.data.redirect) {
-                    // If there is a 'redirect' key in the response, navigate to that URL
                     window.location.href = response.data.redirect;
                 } else if (response.data && response.data.error) {
-                    // If there is an 'error' key, show the error message
                     alert(response.data.error);
                 } else {
-                    // If the response is unexpected, log it and show a default message
                     console.log('Unexpected response:', response.data);
                     alert("An unexpected error occurred.");
                 }
             } catch (error) {
-                // Handle errors that occur during the request
                 console.error('Login error:', error);
                 if (error.response && error.response.data) {
                     alert(error.response.data);
@@ -66,6 +85,7 @@ Log in page
                 }
             }
         }
+
     </script>
 
     <script>

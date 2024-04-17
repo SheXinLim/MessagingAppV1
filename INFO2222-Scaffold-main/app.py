@@ -28,6 +28,7 @@ def apply_csp(response):
     "script-src": [
         "'self'",
         "https://cdnjs.cloudflare.com",  # Allow scripts from CDN for Crypto-JS
+        "https://cdn.jsdelivr.net",
         "'unsafe-inline'" 
     ],
     "style-src": "'self' 'unsafe-inline'",  # Allows inline styles;
@@ -59,36 +60,6 @@ def index():
 def login():    
     return render_template("login.jinja")
 
-# handles a post request when the user clicks the log in button
-# @app.route("/login/user", methods=["POST"])
-# def login_user():
-#     if not request.is_json:
-#         abort(404)
-
-#     username = request.json.get("username")
-#     password = request.json.get("password")
-
-#     user =  db.get_user(username)
-#     if user is None:
-#         return "Error: User does not exist!"
-#     # Check if account is currently locked
-
-#     if user.lockout_until and datetime.now() < user.lockout_until:
-#         return "Account is locked. Please try again later."
-    
-#     if not db.check_password(password, user.password):
-#         # Increment failed attempts and check if lockout is necessary
-#         user.failed_attempts += 1
-#         if user.failed_attempts >= 3:
-#             user.lockout_until = datetime.now() + timedelta(minutes=30)
-#             db.save_user(user)
-#             return "Account is locked. Please try again in 30 minutes."
-#         return "Error: Password does not match!"
-#     # Reset failed attempts on successful login
-#     user.failed_attempts = 0
-#     user.lockout_until = None
-#     session['username'] = username  # Set username in session
-#     return url_for('home', username=request.json.get("username"))
 
 @app.route("/login/user", methods=["POST"])
 def login_user():
@@ -134,6 +105,7 @@ def signup_user():
         abort(404)
     username = request.json.get("username")
     password = request.json.get("password")
+    salt = request.json.get("salt")
 
     if not username or not password:
         return "Error: Username and password are required."
@@ -142,7 +114,7 @@ def signup_user():
         # return "Error: User already exists!"
         return jsonify({"error": "User already exists!"})
     else:
-        db.insert_user(username, password)
+        db.insert_user(username, password, salt)
         session['username'] = username  # Automatically log in the user after signup
         # return url_for('home', username=username)
         return jsonify({"redirect": url_for('home', username=username)})
@@ -262,7 +234,14 @@ def get_friends_list():
     friends = db.get_friends(username)  # This should return a list of friend usernames
     return jsonify({'friends': friends})
 
-
+@app.route('/get_salt', methods=['POST'])
+def get_salt():
+    username = request.json.get('username')
+    user = db.get_user(username)
+    if user:
+        return jsonify({'salt': user.salt}) 
+    else:
+        return jsonify({'error': 'User not found'}), 404
 if __name__ == '__main__':
     # socketio.run(app)
     # for HTTPS Communication
