@@ -130,7 +130,7 @@ def login_user():
     user.lockout_until = None
     db.save_user(user)
     session['username'] = username
-    return (url_for('home', username=username))
+    return jsonify({"redirect": url_for('home', username=username)})
 
 # handles a get request to the signup page
 @app.route("/signup")
@@ -155,8 +155,7 @@ def signup_user():
         db.insert_user(username, password)
         session['username'] = username  # Automatically log in the user after signup
         # return url_for('home', username=username)
-        return jsonify({"redirect": url_for('home')})
-
+        return jsonify({"redirect": url_for('home', username=username)})
 # handler when a "404" error happens
 @app.errorhandler(404)
 def page_not_found(_):
