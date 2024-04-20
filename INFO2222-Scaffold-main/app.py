@@ -136,8 +136,6 @@ def home():
     return render_template("home.jinja", username=username, received_requests=received_requests, 
                            sent_requests=sent_requests, friends=friends)
 
-    # return render_template("home.jinja", username=request.args.get("username"),received_requests=received_requests, 
-    #                        sent_requests=sent_requests)
 
 # friend req
 @app.route("/send-friend-request", methods=["POST"])
@@ -156,10 +154,6 @@ def send_friend_request_route():
     else:
         return "Friend request could not be sent (user may not exist or request already sent)"
 
-# @app.route("/friend-requests/<username>")
-# def friend_requests(username):
-#     requests = db.get_friend_requests(username)
-#     return {"friendRequests": requests}
 @app.route('/friend-requests')
 def friend_requests():
     username = session.get('username')
