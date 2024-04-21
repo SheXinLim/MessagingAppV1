@@ -151,7 +151,7 @@ def send_friend_request_route():
     if db.send_friend_request(sender_username, receiver_username):
         return "Friend request sent successfully!"
     else:
-        return "Friend request could not be sent (user may not exist or request already sent)"
+        return "Friend request could not be sent (user may not exist or you guys are already friends)"
 
 @app.route('/friend-requests')
 def friend_requests():
@@ -245,9 +245,8 @@ def get_hashed_password(username):
         return jsonify({"error": "User not found"}), 404
 
 if __name__ == '__main__':
-    socketio.run(app)
+    # socketio.run(app)
     # for HTTPS Communication
-        # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        # context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
-        # app.run(debug=False, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
- 
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
+        app.run(debug=False, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
