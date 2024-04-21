@@ -388,7 +388,7 @@
         const friendUsername = document.getElementById('friend_username').value;
         // Validate username on the client side
         if (!isValidUsername(friendUsername)) {
-            alert("Invalid username. Please use only alphanumeric characters and underscores, and ensure it is 3-30 characters long.");
+            alert("Invalid username. Please use only alphanumeric characters and underscores, and ensure it is less than 30 characters long.");
             return; // Stop the function if the username is invalid
         }
 
@@ -415,7 +415,7 @@
     }
 
     function isValidUsername(username) {
-        const regex = /^\w{3,30}$/;
+        const regex = /^\w{1,30}$/;
         return regex.test(username);
     }
 
