@@ -4,11 +4,10 @@ this is where you'll find all of the get/post request handlers
 the socket event handlers are inside of socket_routes.py
 '''
 from flask import Flask, flash, jsonify, redirect, render_template, request, abort, session, url_for
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 import db
 import secrets
 import ssl
-import re
 from datetime import datetime
 from datetime import timedelta
 
@@ -236,10 +235,19 @@ def get_salt():
         return jsonify({'salt': user.salt}) 
     else:
         return jsonify({'error': 'User not found'}), 404
+    
+@app.route("/get-hashed-password/<username>")
+def get_hashed_password(username):
+    user = db.get_user(username)
+    if user:
+        return jsonify({"hashed_password": user.password})
+    else:
+        return jsonify({"error": "User not found"}), 404
+
 if __name__ == '__main__':
-    # socketio.run(app)
+    socketio.run(app)
     # for HTTPS Communication
-        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
-        app.run(debug=False, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
+        # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # context.load_cert_chain('cert/info2222.test.crt', 'cert/info2222.test.key') 
+        # app.run(debug=False, ssl_context=context, host='127.0.0.1', port=5000) # debug should be false after fully implemented
  

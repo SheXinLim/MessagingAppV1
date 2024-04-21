@@ -113,11 +113,19 @@
 <script src="/static/js/libs/socket.io.min.js"></script>
 
 {# encrypt  #}
-{# <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/pbkdf2.min.js"></script>
 
 
 <script>
     let room_id = 0;
+    const SALT = CryptoJS.enc.Hex.parse("0123456789ABCDEF0123456789ABCDEF");
+
+    function generateSalt() {
+        return SALT;
+    }  
+
 
     // when the user presses the "Enter" key inside of the "message box", 
     // the message is sent to the server
@@ -149,10 +157,35 @@
         $("#input_box").show();
         room_id = parseInt(Cookies.get("room_id"));
     })
+
+
+    $(document).ready(function() {
+        $.ajax({
+            url: "/get-hashed-password/{{ username }}",
+            type: "GET",
+            success: function(response) {
+                // Handle successful response
+                console.log("Hashed Password:", response.hashed_password);
+                let hashedPassword = response.hashed_password;
+
+                // Call the send function with the hashed password
+                //send(hashedPassword);
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error("Error:", error);
+            }
+        });
+    }); 
+
+
     
     // Here's the Socket IO part of the code
     // things get a bit complicated here so brace yourselves :P
     let username = "{{ username }}";
+    let hashedpass = "{{ hashed_password }}";
+
+    
 
     Cookies.set('username', username);
 
@@ -160,18 +193,7 @@
     const socket = io();
 
 
-
-    // an incoming message arrives, we'll add the message to the message box
-    socket.on("incoming", (msg, color="black") => {
-        add_message(msg, color);
-    })
-
-    //encrypt
-    //socket.on("incoming", (encryptedMsg, color="black") => {
-        // Decrypt the message before displaying
-        //let decryptedMsg = decryptMessage(encryptedMsg);
-        //add_message(decryptedMsg, color);
-    //})
+   
 
     // we emit a join room event to the server to join a room
     function join_room() {
@@ -188,7 +210,6 @@
                 return;
             }
 
-            // set the room id variable to the room id returned by the server
             room_id = res;
             Cookies.set("room_id", room_id);
 
@@ -198,21 +219,132 @@
         });
      
     }
+     
+    
+    function generateSalt(length) {
+        return CryptoJS.lib.WordArray.random(length);
+    }
+
+    const salt = generateSalt();
+
+    
+
+    function generateHMACKey(password, salt) {
+        return CryptoJS.PBKDF2(password, salt, { keySize: 256/32 }).toString(CryptoJS.enc.Hex);
+    }
+
+    let hmacKey = generateHMACKey(hashedpass, salt);
+
+
+    function generateKey(password, salt) {
+        let iterations = 1000; 
+        let keySize = 256; 
+
+        let key = CryptoJS.PBKDF2(password, salt, { keySize: keySize/32, iterations: iterations });
+
+        return key;
+    }
+
+   
+    let key = generateKey(hashedpass, salt);
+    
+
+    function encryptMessage(message, key) {
+        let iv = CryptoJS.lib.WordArray.random(16); 
+
+        let ciphertext = CryptoJS.AES.encrypt(message, key, { iv: iv }).toString();
+
+        return iv.toString(CryptoJS.enc.Base64) + ":" + ciphertext;
+    } 
+
+
+    function decryptMessage(encryptedMessage, key) {
+        let parts = encryptedMessage.split(":");
+        let iv = CryptoJS.enc.Base64.parse(parts[0]);
+        let ciphertext = parts[1];
+
+
+        let decrypted = CryptoJS.AES.decrypt(ciphertext, key, { iv: iv });
+
+        return decrypted.toString(CryptoJS.enc.Utf8);
+    }
+
 
     function send() {
         let message = $("#message").val();
         $("#message").val("");
-        if (!room_id) {
+
+        let encryptedMessage = encryptMessage(message, key);
+        let hmac = CryptoJS.HmacSHA256(encryptedMessage, hmacKey).toString(CryptoJS.enc.Hex);
+    
+        socket.emit("send", username, encryptedMessage, hmac, hmacKey.toString(), room_id);
+     
+
+    } 
+
+    
+
+
+    socket.on("incoming", (data, color="black") => {
+        if (typeof data === 'string') {
+            add_message(data, color);
+        } else {  
+            let decryptedMessage = decryptMessage(data.message, key);
+            let username = data.username;
+            add_message(username + ": " + decryptedMessage, color);
+        }
+    });   
+
+
+
+    socket.on("user_joined", (message, color="green") => {
+        add_message(message, color);
+    });
+
+    socket.on("user_left", (message, color="red") => {
+        add_message(message, color);
+    });
+
+    socket.on("private_conversation_started", (message, color="green") => {
+        add_message(message, color);
+    });  
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{# 
+
+    function send() {
+        let message = $("#message").val();
+        $("#message").val("");
+       if (!room_id) {
             alert("You must join a room before sending messages.");
             return;
-        }
-        // two lines encrypt
-        // let encryptedMessage = encryptMessage(message);
-        // socket.emit("send", username, encryptedMessage, room_id); 
+       }
         
-
         socket.emit("send", username, message, room_id);  
     }
+
+
+    socket.on("incoming", (message, color="black") => {
+       add_message(message, color);
+    });
+
+    #}
+
+
 
     function startPrivateConversation(friendUsername) {
         socket.emit("join", username, friendUsername, (roomId) => {
@@ -229,6 +361,7 @@
 
     function sendPrivateMessage() {
         let message = $("#message").val();
+        //let encryptedMessage = encryptMessage(message);
         $("#message").val("");
         socket.emit("private_message", username, message, room_id);  
     }
@@ -259,7 +392,6 @@
             return; // Stop the function if the username is invalid
         }
 
-
         fetch('/send-friend-request', {
             method: 'POST',
             headers: {
@@ -286,6 +418,8 @@
         const regex = /^\w{3,30}$/;
         return regex.test(username);
     }
+
+
 
     //function to accept or decline friend request
     function handleFriendRequest(action, requestId) {

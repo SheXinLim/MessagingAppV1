@@ -8,7 +8,11 @@ from flask_socketio import join_room, emit, leave_room
 from requests import Session
 from flask import request
 from db import engine
-from sqlalchemy.orm import sessionmaker, join
+from sqlalchemy.orm import sessionmaker 
+
+from hashlib import sha256
+import hmac
+
 
 try:
     from __main__ import socketio
@@ -38,7 +42,7 @@ def connect():
     if room_id is None or username is None:
         return
 
-    join_room(int(room_id))
+    join_room(room_id)
 
     with Session() as session:
 
@@ -47,11 +51,12 @@ def connect():
         for message in user_messages:
             emit("incoming", f"{message.sender_username}: {message.content}")
 
-    emit("incoming", (f"{username} has connected", "green"), to=int(room_id))
+    emit("incoming", (f"{username} has connected", "green"), to=room_id)
 
     with Session() as session:
         session.add(Message(sender_username=username, content=f"{username} has connected"))
         session.commit()
+
 
 
 @socketio.on('disconnect')
@@ -62,7 +67,7 @@ def disconnect():
         return
     
     # Emit a message to inform the other user about the disconnection
-    emit("incoming", (f"{username} has disconnected", "red"), to=int(room_id))
+    emit("incoming", (f"{username} has disconnected", "red"), to=room_id)
     
     # Leave the room
     leave_room(room_id)
@@ -147,44 +152,94 @@ def join(sender_name, receiver_name):
     return room_id
 
 
+
+
 @socketio.on("send")
-def send(username, message, room_id):
+def send(username, encrypted_message, hmac_received, hmac_key_received, room_id):
     if username not in joined_users:
         return "You must join a room before sending messages."
     
-    room_members = room.get_room_members(room_id)
-    if not room_members or username not in room_members:
-        return "Both users must join the room before sending messages."
-    
-    # Check if the sender and receiver have joined the room with each other's usernames
-    sender_name = username
-    receiver_name = None
-    for name, relationships in room_relationships.items():
-        if sender_name in relationships:
-            receiver_name = name
-            break
-    
-    if receiver_name is None or sender_name not in room_relationships.get(receiver_name, set()):
-        return "Both users must join the room with each other's usernames before sending messages."
+    calculated_hmac = hmac.new(hmac_key_received.encode(), encrypted_message.encode(), digestmod=sha256).hexdigest()
 
-    room_members = room.dict.values() 
-    
-    if len(room_members) > 1:
-        # Emit the message to the room
-        emit("incoming", f"{username}: {message}", to=room_id)
-
-        # Check if the sender has left the room
-        if user_left_status.get(username, False):
-            return  # Don't store or emit the message if the sender has left the room
+    if calculated_hmac != hmac_received:
+        print("HMAC verification failed.")
+    else: 
+        print("HMAC verification successful.")
         
-        # Save message to the database
-        with Session() as session:  # Create a session instance
-            new_message = Message(sender_username=sender_name, receiver_username=receiver_name, content=message)
-            session.add(new_message)
-            session.commit()
+        room_members = room.get_room_members(room_id)
+        if not room_members or username not in room_members:
+            return "Both users must join the room before sending messages."
+        
+        sender_name = username
+        receiver_name = None
+        for name, relationships in room_relationships.items():
+            if sender_name in relationships:
+                receiver_name = name
+                break
+        
+        if receiver_name is None or sender_name not in room_relationships.get(receiver_name, set()):
+            return "Both users must join the room with each other's usernames before sending messages."
 
-            # print(f"Message stored in the database: {username}: {message}")
-      
+        room_members = room.dict.values() 
+
+        if len(room_members) > 1:
+            emit("incoming", {"username": username, "message": encrypted_message}, to=room_id)
+
+            if user_left_status.get(username, False):
+                return  # Don't store or emit the message if the sender has left the room
+            
+
+            with Session() as session:  # Create a session instance
+                new_message = Message(sender_username=sender_name, receiver_username=receiver_name, content=encrypted_message)
+                session.add(new_message)
+                session.commit()
+
+                print(f"Encrypted message stored in the database: {username}: {encrypted_message}")
+
+
+
+# @socketio.on("send")
+# def send(username, message, room_id):
+#     if username not in joined_users:
+#         return "You must join a room before sending messages."
+    
+#     room_members = room.get_room_members(room_id)
+#     if not room_members or username not in room_members:
+#         return "Both users must join the room before sending messages."
+    
+#     # Check if the sender and receiver have joined the room with each other's usernames
+#     sender_name = username
+#     receiver_name = None
+#     for name, relationships in room_relationships.items():
+#         if sender_name in relationships:
+#             receiver_name = name
+#             break
+    
+#     if receiver_name is None or sender_name not in room_relationships.get(receiver_name, set()):
+#         return "Both users must join the room with each other's usernames before sending messages."
+
+#     room_members = room.dict.values() 
+
+#     if len(room_members) > 1:
+#         # Emit the encrypted message to the room
+#         # emit("incoming", {"username": username, "message": message}, to=room_id)
+#         emit("incoming", f"{username}: {message}", to=room_id)
+
+
+#         # Check if the sender has left the room
+#         if user_left_status.get(username, False):
+#             return  # Don't store or emit the message if the sender has left the room
+        
+
+
+
+#         with Session() as session:  # Create a session instance
+#             new_message = Message(sender_username=sender_name, receiver_username=receiver_name, content=message)
+#             session.add(new_message)
+#             session.commit()
+
+#             print(f"Encrypted message stored in the database: {username}: {message}")
+
 
 
 
@@ -204,9 +259,6 @@ def private_message(username, message, room_id):
 def leave(username, room_id):
     emit("incoming", (f"{username} has left the room.", "red"), to=room_id)
     
-    # if username in user_messages:
-    #     user_messages[username] = [msg for msg in user_messages[username] if msg[2] != room_id]
-
     user_left_status[username] = True
 
     with Session() as session:
