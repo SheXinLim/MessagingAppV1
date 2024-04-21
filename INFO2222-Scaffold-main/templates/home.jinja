@@ -253,6 +253,12 @@
     // Function to send a friend request
     function sendFriendRequest() {
         const friendUsername = document.getElementById('friend_username').value;
+        // Validate username on the client side
+        if (!isValidUsername(friendUsername)) {
+            alert("Invalid username. Please use only alphanumeric characters and underscores, and ensure it is 3-30 characters long.");
+            return; // Stop the function if the username is invalid
+        }
+
 
         fetch('/send-friend-request', {
             method: 'POST',
@@ -274,6 +280,11 @@
         .catch((error) => {
             console.error('There has been a problem with your fetch operation:', error);
         });
+    }
+
+    function isValidUsername(username) {
+        const regex = /^\w{3,30}$/;
+        return regex.test(username);
     }
 
     //function to accept or decline friend request
