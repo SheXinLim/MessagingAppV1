@@ -50,6 +50,16 @@ def insert_user(username: str, password: str, salt:str):
 def get_user(username: str):
     with Session(engine) as session:
         return session.get(User, username)
+    
+def remove_friend(username, friend_username):
+    with Session(engine) as session:
+        friendship = session.query(Friendship).filter((Friendship.user_id == username) & (Friendship.friend_id == friend_username)).first()
+        if friendship:
+            session.delete(friendship)
+            session.commit()
+            return True
+        return False
+
   
 def send_friend_request(sender_username: str, receiver_username: str):
     with Session(engine) as session:
@@ -79,9 +89,9 @@ def send_friend_request(sender_username: str, receiver_username: str):
             session.commit()
             existing_request = None
 
-        if existing_request:
-            # An existing friend request in a non-declined state is present, don't allow a new request
-            return False
+        # if existing_request:
+        #     # An existing friend request in a non-declined state is present, don't allow a new request
+        #     return False
 
         # If no existing request is found, or the declined one was removed, create a new friend request
         friend_request = FriendRequest(sender_username=sender_username, receiver_username=receiver_username, status='pending')
@@ -167,3 +177,5 @@ def save_user(user):
     with Session(engine) as session:
         session.merge(user)  # The merge() method is used to either update an existing row or insert a new row.
         session.commit()
+
+

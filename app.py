@@ -152,6 +152,8 @@ def send_friend_request_route():
         return "Friend request sent successfully!"
     else:
         return "Friend request could not be sent (user may not exist or you guys are already friends)"
+    
+
 
 @app.route('/friend-requests')
 def friend_requests():
@@ -243,6 +245,18 @@ def get_hashed_password(username):
         return jsonify({"hashed_password": user.password})
     else:
         return jsonify({"error": "User not found"}), 404
+    
+
+#removing friends
+@app.route('/remove-friend/<friend_username>', methods=['POST'])
+def remove_friend(friend_username):
+    user = request.json.get('username')
+    friend_removed = db.remove_friend(user, friend_username)
+    if friend_removed:
+        return jsonify({'message': 'Friend removed successfully.'}), 200
+    else:
+        return jsonify({'message': 'Failed to remove friend.'}), 400
+
 
 if __name__ == '__main__':
     # socketio.run(app)
