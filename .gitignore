@@ -1,1 +1,37 @@
 .DS_Store
+# Byte-compiled / intermediate files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# System files (Mac & Windows)
+.DS_Store
+Thumbs.db
+
+# Logs & Debug files
+*.log
+
+# Python Package files
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Database & credentials (if any)
+*.sqlite3
+*.db
+*.pkl
+*.json  # (if contains sensitive data)
+
+# Dependency Management
+Pipfile
+Pipfile.lock
+requirements.txt  # Optional, if you want it ignored
+
+# VS Code & JetBrains IDE settings
+.vscode/
+.idea/
